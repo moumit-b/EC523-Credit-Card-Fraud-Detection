@@ -1,9 +1,7 @@
 # Credit Card Fraud Detection with Deep Autoencoders
 
-Group Members:
+## Group Members:
 Moumit Bhattacharjee - moumitb@bu.edu
-
-Figure 1. Illustration of credit card fraud detection.
 
 ## Task
 Detect fraudulent credit-card transactions in highly imbalanced, time-ordered data via unsupervised/semi-supervised anomaly detection: train a deep autoencoder on legitimate transactions and flag high reconstruction error as fraud. Key challenges: extreme imbalance (~0.17% fraud), concept drift, and asymmetric costs.
