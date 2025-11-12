@@ -3,6 +3,7 @@
 ## Group Members:
 Moumit Bhattacharjee - moumitb@bu.edu
 Rohan Hegde - rohanh@bu.edu
+Emmanuel Herold - ebherold@bu.edu
 
 ## Task
 Detect fraudulent credit-card transactions in highly imbalanced, time-ordered data via unsupervised/semi-supervised anomaly detection: train a deep autoencoder on legitimate transactions and flag high reconstruction error as fraud. Key challenges: extreme imbalance (~0.17% fraud), concept drift, and asymmetric costs.
