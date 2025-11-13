@@ -4,6 +4,7 @@
 Moumit Bhattacharjee - moumitb@bu.edu
 
 Rohan Hegde - rohanh@bu.edu
+
 Emmanuel Herold - ebherold@bu.edu
 
 ## Task
@@ -18,10 +19,4 @@ Public European Credit Card Fraud dataset; create time-ordered train/val/test sp
 ## Baselines
 Isolation Forest, class-weighted Logistic Regression (and optionally XGBoost).
 
-## Timeline (condensed)
-- 10/28/25: repo, data splits, baseline AE & Isolation Forest  
-- 11/14/25: status update  
-- 11/29/25: figures & dry-run  
-- 12/01/25: final report  
-- 12/02/25: presentation
 
