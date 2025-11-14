@@ -8,7 +8,6 @@ data analysis, trains baseline models, and evaluates their performance.
 import sys
 import os
 
-# Add parent directory to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.data_utils import (
@@ -43,7 +42,6 @@ def main():
         print("3. Place it in the data/ directory of this project")
         return
 
-    # Print basic dataset information
     print_dataset_info(df)
 
     # Create time-ordered splits
@@ -77,10 +75,7 @@ def main():
     if_results = train_isolation_forest(X_train, y_train, X_val, y_val)
     results['Isolation Forest'] = if_results
 
-    # Print comparison
     print_baseline_comparison(results)
-
-    # Summary
     print("\n" + "=" * 60)
     print("CHECKPOINT SUMMARY")
     print("=" * 60)
