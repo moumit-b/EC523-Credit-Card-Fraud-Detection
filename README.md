@@ -138,20 +138,7 @@ Given the highly imbalanced nature of fraud detection, we use the following metr
 - **PR-AUC**: Precision-Recall AUC (more informative for imbalanced datasets)
 - **Recall@90% Precision**: Recall achieved at 90% precision threshold (planned)
 
-## Roadmap
-
-See [docs/roadmap.md](docs/roadmap.md) for detailed project timeline and remaining work.
-
-**Key milestones:**
-1. ✅ Data pipeline and baseline models
-2. ⬜ Deep autoencoder implementation
-3. ⬜ Anomaly detection and evaluation framework
-4. ⬜ Experiments and hyperparameter tuning
-5. ⬜ Final report and presentation
-
 ## References
 
 - Dataset: [Kaggle - Credit Card Fraud Detection](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud)
 - Original paper: Andrea Dal Pozzolo et al. "Calibrating Probability with Undersampling for Unbalanced Classification." (2015)
-
-
