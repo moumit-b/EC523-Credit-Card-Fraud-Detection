@@ -129,6 +129,43 @@ def train_isolation_forest(
     }
 
 
+def evaluate_baseline_on_test(
+    model: Any,
+    X_test: np.ndarray,
+    y_test: np.ndarray,
+    model_type: str = 'logistic'
+) -> Dict[str, Any]:
+    """
+    Evaluate a trained baseline model on test set.
+
+    Args:
+        model: Trained model (LogisticRegression or IsolationForest)
+        X_test: Test features
+        y_test: Test labels
+        model_type: 'logistic' or 'isolation_forest'
+
+    Returns:
+        Dictionary with test metrics
+    """
+    if model_type == 'logistic':
+        y_scores = model.predict_proba(X_test)[:, 1]
+    elif model_type == 'isolation_forest':
+        y_scores = -model.score_samples(X_test)
+    else:
+        raise ValueError(f"Unknown model type: {model_type}")
+
+    from sklearn.metrics import roc_auc_score, average_precision_score
+
+    roc_auc = roc_auc_score(y_test, y_scores)
+    pr_auc = average_precision_score(y_test, y_scores)
+
+    return {
+        'roc_auc': roc_auc,
+        'pr_auc': pr_auc,
+        'y_scores': y_scores
+    }
+
+
 def print_baseline_comparison(results: Dict[str, Dict[str, Any]]) -> None:
     """
     Print a comparison table of baseline model results.
