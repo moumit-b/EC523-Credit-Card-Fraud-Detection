@@ -7,8 +7,9 @@ the credit card fraud dataset in a time-ordered manner.
 
 import pandas as pd
 import numpy as np
+import os
 from sklearn.preprocessing import StandardScaler
-from typing import Tuple
+from typing import Tuple, Optional
 
 
 def load_creditcard_data(path: str = "data/creditcard.csv") -> pd.DataFrame:
@@ -151,3 +152,92 @@ def standardize_features(
     print(f"Feature columns: {', '.join(feature_cols[:5])}... (and {len(feature_cols)-5} more)")
 
     return X_train_scaled, y_train, X_val_scaled, y_val, X_test_scaled, y_test, scaler
+
+
+def get_normal_transactions_only(
+    X: np.ndarray,
+    y: np.ndarray
+) -> np.ndarray:
+    """
+    Extract only normal (non-fraud) transactions for unsupervised training.
+
+    This is critical for autoencoder training: we train only on legitimate
+    transactions so the model learns normal behavior patterns.
+
+    Args:
+        X: Feature matrix.
+        y: Labels (0 = normal, 1 = fraud).
+
+    Returns:
+        Feature matrix containing only normal transactions.
+    """
+    normal_mask = (y == 0)
+    X_normal = X[normal_mask]
+
+    print(f"\nFiltered to normal transactions only:")
+    print(f"  Original samples: {len(X):,}")
+    print(f"  Normal samples: {len(X_normal):,}")
+    print(f"  Removed frauds: {(~normal_mask).sum():,}")
+
+    return X_normal
+
+
+def get_dataset_statistics(path: str = "data/creditcard.csv") -> dict:
+    """
+    Get detailed statistics about the dataset for reporting.
+
+    Args:
+        path: Path to the dataset file.
+
+    Returns:
+        Dictionary with dataset statistics.
+    """
+    # File size
+    file_size_bytes = os.path.getsize(path)
+    file_size_mb = file_size_bytes / (1024 * 1024)
+
+    # Load data
+    df = pd.read_csv(path)
+
+    stats = {
+        'file_size_mb': file_size_mb,
+        'total_samples': len(df),
+        'num_features': len(df.columns) - 1,  # Exclude 'Class' column
+        'normal_count': (df['Class'] == 0).sum(),
+        'fraud_count': (df['Class'] == 1).sum(),
+        'fraud_rate': (df['Class'] == 1).sum() / len(df) * 100,
+        'feature_names': [col for col in df.columns if col != 'Class']
+    }
+
+    return stats
+
+
+def print_split_statistics(
+    train_df: pd.DataFrame,
+    val_df: pd.DataFrame,
+    test_df: pd.DataFrame
+) -> None:
+    """
+    Print detailed statistics for each split.
+
+    Args:
+        train_df: Training DataFrame.
+        val_df: Validation DataFrame.
+        test_df: Test DataFrame.
+    """
+    print("\n" + "=" * 60)
+    print("SPLIT STATISTICS")
+    print("=" * 60)
+
+    for name, df in [("Train", train_df), ("Val", val_df), ("Test", test_df)]:
+        total = len(df)
+        normal = (df['Class'] == 0).sum()
+        fraud = (df['Class'] == 1).sum()
+        fraud_rate = fraud / total * 100
+
+        print(f"\n{name} Set:")
+        print(f"  Total: {total:,}")
+        print(f"  Normal: {normal:,} ({normal/total*100:.2f}%)")
+        print(f"  Fraud: {fraud:,} ({fraud_rate:.4f}%)")
+
+    print("=" * 60)
