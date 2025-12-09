@@ -1,10 +1,4 @@
-"""
-Deep Autoencoder models for credit card fraud detection.
 
-This module implements:
-1. DeepAutoencoder: Standard autoencoder for anomaly detection
-2. DenoisingAutoencoder: Variant with noise injection for robustness
-"""
 
 import torch
 import torch.nn as nn
