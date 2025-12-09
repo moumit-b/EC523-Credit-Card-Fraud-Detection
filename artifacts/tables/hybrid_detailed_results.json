@@ -1,0 +1,39 @@
+{
+  "model_name": "Hybrid (AE\u2192LR)",
+  "approach": "Autoencoder feature learning + Logistic Regression",
+  "latent_dim": 8,
+  "ae_training": {
+    "best_epoch": 46,
+    "best_val_loss": 0.4697140072097147,
+    "training_time_seconds": 1383.7442367076874,
+    "parameters": 8549
+  },
+  "lr_training": {
+    "solver": "lbfgs",
+    "class_weight": "balanced",
+    "max_iter": 1000
+  },
+  "validation_metrics": {
+    "roc_auc": 0.9333417192637153,
+    "pr_auc": 0.2471529742292182,
+    "recall_at_90p": 0.0
+  },
+  "test_metrics": {
+    "roc_auc": 0.9680829246283568,
+    "pr_auc": 0.3555111784889372,
+    "recall_at_90p": 0.0,
+    "threshold_at_90p": 0.9999999984532064
+  },
+  "comparison": {
+    "pr_auc_vs_pure_ae": {
+      "pure_ae": 0.152,
+      "hybrid": 0.3555111784889372,
+      "improvement_percent": 133.88893321640606
+    },
+    "pr_auc_vs_pure_lr": {
+      "pure_lr": 0.744,
+      "hybrid": 0.3555111784889372,
+      "improvement_percent": -52.21623945041166
+    }
+  }
+}

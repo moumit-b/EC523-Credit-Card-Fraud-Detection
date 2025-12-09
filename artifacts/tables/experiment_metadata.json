@@ -1,0 +1,13 @@
+{
+  "random_seed": 42,
+  "device": "cpu",
+  "dataset_path": "C:\\Users\\moumi\\EC523-Credit-Card-Fraud-Detection\\data\\creditcard.csv",
+  "train_samples": 170884,
+  "train_normal_samples": 170524,
+  "val_samples": 56961,
+  "test_samples": 56962,
+  "ae_params": 8549,
+  "ae_training_time": 1304.6322932243347,
+  "dae_params": 8549,
+  "dae_training_time": 1226.059236049652
+}

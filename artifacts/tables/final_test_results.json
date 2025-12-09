@@ -1,0 +1,30 @@
+[
+  {
+    "Model": "Logistic Regression",
+    "ROC-AUC": 0.9820044415537235,
+    "PR-AUC": 0.7437698102685204,
+    "Recall@90%P": 0.68,
+    "Threshold@90%P": 0.9999742323597429
+  },
+  {
+    "Model": "Isolation Forest",
+    "ROC-AUC": 0.9522109913805732,
+    "PR-AUC": 0.03322332678290153,
+    "Recall@90%P": 0.0,
+    "Threshold@90%P": 0.7889441772690274
+  },
+  {
+    "Model": "Deep Autoencoder",
+    "ROC-AUC": 0.9501292035087103,
+    "PR-AUC": 0.15181573284267402,
+    "Recall@90%P": 0.0,
+    "Threshold@90%P": 151.02247619628906
+  },
+  {
+    "Model": "Denoising Autoencoder",
+    "ROC-AUC": 0.939576587503882,
+    "PR-AUC": 0.08470895213931548,
+    "Recall@90%P": 0.0,
+    "Threshold@90%P": 160.9509735107422
+  }
+]

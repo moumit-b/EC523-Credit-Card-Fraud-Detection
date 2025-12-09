@@ -1,0 +1,94 @@
+{
+  "experiment": "Noise Level Ablation Study",
+  "motivation": "DAE with noise=0.1 performed worse than standard AE in initial tests",
+  "hypothesis": "Lower noise levels will improve performance by reducing over-regularization",
+  "actual_finding": "HIGHER noise levels actually improve performance! noise=0.2 is optimal.",
+  "noise_levels_tested": [
+    0.0,
+    0.01,
+    0.05,
+    0.1,
+    0.2
+  ],
+  "results": {
+    "best_noise_level": 0.2,
+    "best_pr_auc": 0.1992278767175102,
+    "original_noise_level": 0.1,
+    "original_pr_auc": 0.1468745159718547,
+    "improvement_percent": 35.644958827090115,
+    "standard_ae_pr_auc": 0.0901937795222228
+  },
+  "conclusion": "Optimal noise level: 0.2 (PR-AUC: 0.1992). This represents a +35.6% improvement over the original noise=0.1. Counterintuitively, higher noise improves performance by acting as regularization.",
+  "all_results": [
+    {
+      "noise_level": 0.0,
+      "model_name": "AE (no noise)",
+      "best_epoch": 35,
+      "best_val_loss": 0.4879916757846922,
+      "training_time": 1268.8657367229462,
+      "val_roc_auc": 0.9421713023596529,
+      "val_pr_auc": 0.0371185986075385,
+      "val_recall_at_90p": 0.0,
+      "test_roc_auc": 0.9372430725238924,
+      "test_pr_auc": 0.0901937795222228,
+      "test_recall_at_90p": 0.0,
+      "test_threshold_at_90p": 722.23987
+    },
+    {
+      "noise_level": 0.01,
+      "model_name": "DAE (noise=0.01)",
+      "best_epoch": 35,
+      "best_val_loss": 0.4849169905371671,
+      "training_time": 1143.4830281734469,
+      "val_roc_auc": 0.9441241142361034,
+      "val_pr_auc": 0.0408821135851064,
+      "val_recall_at_90p": 0.0,
+      "test_roc_auc": 0.9419712763900364,
+      "test_pr_auc": 0.1015204491861759,
+      "test_recall_at_90p": 0.0,
+      "test_threshold_at_90p": 142.35855
+    },
+    {
+      "noise_level": 0.05,
+      "model_name": "DAE (noise=0.05)",
+      "best_epoch": 28,
+      "best_val_loss": 0.4966053465834905,
+      "training_time": 950.8665926456453,
+      "val_roc_auc": 0.9425119807814208,
+      "val_pr_auc": 0.0325215851866347,
+      "val_recall_at_90p": 0.0,
+      "test_roc_auc": 0.9414176642583836,
+      "test_pr_auc": 0.0893341499998284,
+      "test_recall_at_90p": 0.0,
+      "test_threshold_at_90p": 399.56375
+    },
+    {
+      "noise_level": 0.1,
+      "model_name": "DAE (noise=0.1)",
+      "best_epoch": 15,
+      "best_val_loss": 0.4939629513473489,
+      "training_time": 683.5683491230011,
+      "val_roc_auc": 0.9468390591972692,
+      "val_pr_auc": 0.06319377336485,
+      "val_recall_at_90p": 0.0,
+      "test_roc_auc": 0.9424149629968184,
+      "test_pr_auc": 0.1468745159718547,
+      "test_recall_at_90p": 0.0,
+      "test_threshold_at_90p": 390.1812
+    },
+    {
+      "noise_level": 0.2,
+      "model_name": "DAE (noise=0.2)",
+      "best_epoch": 23,
+      "best_val_loss": 0.4973127872554541,
+      "training_time": 1063.2921512126925,
+      "val_roc_auc": 0.9449435922859306,
+      "val_pr_auc": 0.0953192212904833,
+      "val_recall_at_90p": 0.0,
+      "test_roc_auc": 0.9466765107435208,
+      "test_pr_auc": 0.1992278767175102,
+      "test_recall_at_90p": 0.0,
+      "test_threshold_at_90p": 128.44774
+    }
+  ]
+}
