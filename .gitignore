@@ -55,7 +55,7 @@ Thumbs.db
 
 # Project specific - Dataset
 data/
-*.csv
+creditcard.csv
 
 # Project specific - Documentation
 *.pdf
