@@ -15,7 +15,10 @@ from sklearn.metrics import (
     precision_recall_curve,
     roc_curve,
     confusion_matrix,
-    classification_report
+    classification_report,
+    f1_score,
+    precision_score,
+    recall_score
 )
 from typing import Dict, Any, List, Tuple, Optional
 
@@ -28,6 +31,15 @@ def compute_all_metrics(
     """
     Compute all evaluation metrics for a model.
 
+    Primary metrics:
+    - PR-AUC: Area under precision-recall curve (threshold-free)
+    - F1-optimal: F1, precision, recall, accuracy at best F1 threshold
+    - Confusion matrix: TN, FP, FN, TP at F1-optimal threshold
+
+    Secondary metrics (for reference):
+    - ROC-AUC: Area under ROC curve
+    - Recall@90%P: Recall at 90% precision (optional future work)
+
     Args:
         y_true: True labels (0 = normal, 1 = fraud)
         y_scores: Anomaly scores (higher = more likely fraud)
@@ -36,27 +48,44 @@ def compute_all_metrics(
     Returns:
         Dictionary with all metrics
     """
-    # Basic metrics
-    roc_auc = roc_auc_score(y_true, y_scores)
+    # Primary metric 1: PR-AUC (threshold-free)
     pr_auc = average_precision_score(y_true, y_scores)
 
-    # Recall@90% Precision
+    # Primary metric 2: F1-optimal operating point
+    best_f1_threshold, f1_metrics = find_best_f1_threshold(y_true, y_scores)
+
+    # Secondary metrics
+    roc_auc = roc_auc_score(y_true, y_scores)
+
+    # Recall@90% Precision (de-emphasized, kept for reference)
     recall_at_90p, threshold_at_90p = find_recall_at_precision(
         y_true, y_scores, target_precision=0.90
     )
 
-    # Precision-Recall curve data
+    # Precision-Recall curve data (for plotting)
     precision, recall, pr_thresholds = precision_recall_curve(y_true, y_scores)
 
-    # ROC curve data
+    # ROC curve data (for plotting)
     fpr, tpr, roc_thresholds = roc_curve(y_true, y_scores)
 
     return {
         'model_name': model_name,
-        'roc_auc': roc_auc,
+        # Primary metrics
         'pr_auc': pr_auc,
+        'f1_optimal_threshold': best_f1_threshold,
+        'f1_optimal_f1': f1_metrics['f1'],
+        'f1_optimal_precision': f1_metrics['precision'],
+        'f1_optimal_recall': f1_metrics['recall'],
+        'f1_optimal_accuracy': f1_metrics['accuracy'],
+        'f1_optimal_tp': f1_metrics['tp'],
+        'f1_optimal_fp': f1_metrics['fp'],
+        'f1_optimal_tn': f1_metrics['tn'],
+        'f1_optimal_fn': f1_metrics['fn'],
+        # Secondary metrics
+        'roc_auc': roc_auc,
         'recall_at_90p': recall_at_90p,
         'threshold_at_90p': threshold_at_90p,
+        # Curve data for plotting
         'precision': precision,
         'recall': recall,
         'pr_thresholds': pr_thresholds,
@@ -65,6 +94,83 @@ def compute_all_metrics(
         'roc_thresholds': roc_thresholds,
         'y_scores': y_scores
     }
+
+
+def find_best_f1_threshold(
+    y_true: np.ndarray,
+    y_scores: np.ndarray
+) -> Tuple[float, Dict[str, Any]]:
+    """
+    Find the threshold that maximizes F1 score.
+
+    This sweeps through thresholds from the precision-recall curve to find
+    the operating point with the best F1 score.
+
+    Args:
+        y_true: True labels (0 = normal, 1 = fraud)
+        y_scores: Anomaly scores (higher = more likely fraud)
+
+    Returns:
+        Tuple of (best_threshold, metrics_dict)
+        where metrics_dict contains: f1, precision, recall, accuracy,
+        tp, fp, tn, fn at the best threshold
+    """
+    precision, recall, thresholds = precision_recall_curve(y_true, y_scores)
+
+    # Compute F1 scores for each threshold
+    # F1 = 2 * (precision * recall) / (precision + recall)
+    # Avoid division by zero
+    with np.errstate(divide='ignore', invalid='ignore'):
+        f1_scores = 2 * (precision * recall) / (precision + recall)
+        f1_scores = np.nan_to_num(f1_scores, nan=0.0)
+
+    # Find best F1
+    best_idx = np.argmax(f1_scores)
+    best_f1 = f1_scores[best_idx]
+
+    # Get corresponding threshold
+    # Note: thresholds array is one element shorter than precision/recall
+    if best_idx < len(thresholds):
+        best_threshold = thresholds[best_idx]
+    else:
+        # If best is at the end, use last threshold or default
+        best_threshold = thresholds[-1] if len(thresholds) > 0 else 0.5
+
+    # Compute confusion matrix at best threshold
+    y_pred = (y_scores >= best_threshold).astype(int)
+    cm = confusion_matrix(y_true, y_pred)
+
+    if cm.size == 4:  # Standard 2x2 matrix
+        tn, fp, fn, tp = cm.ravel()
+    else:
+        # Handle edge case where all predictions are one class
+        if cm.shape == (1, 1):
+            if y_true[0] == 0:  # All negatives
+                tn, fp, fn, tp = cm[0, 0], 0, 0, 0
+            else:  # All positives
+                tn, fp, fn, tp = 0, 0, 0, cm[0, 0]
+        else:
+            tn, fp, fn, tp = 0, 0, 0, 0
+
+    # Compute final metrics
+    total = tp + tn + fp + fn
+    accuracy = (tp + tn) / total if total > 0 else 0.0
+    prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    rec = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+
+    metrics = {
+        'threshold': float(best_threshold),
+        'f1': float(best_f1),
+        'precision': float(prec),
+        'recall': float(rec),
+        'accuracy': float(accuracy),
+        'tp': int(tp),
+        'fp': int(fp),
+        'tn': int(tn),
+        'fn': int(fn)
+    }
+
+    return best_threshold, metrics
 
 
 def find_recall_at_precision(
@@ -77,6 +183,9 @@ def find_recall_at_precision(
 
     This is a key metric for fraud detection: we want to know how many
     frauds we can catch while maintaining high precision (few false alarms).
+
+    NOTE: This metric is kept for reference but is de-emphasized in favor
+    of F1-optimal operating points.
 
     Args:
         y_true: True labels
@@ -219,14 +328,26 @@ def print_evaluation_summary(
         results: Results dictionary from compute_all_metrics()
         split_name: Name of the split (e.g., "Validation", "Test")
     """
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 70)
     print(f"{results['model_name']} - {split_name} Set Evaluation")
-    print("=" * 60)
-    print(f"ROC-AUC:              {results['roc_auc']:.4f}")
-    print(f"PR-AUC:               {results['pr_auc']:.4f}")
-    print(f"Recall@90% Precision: {results['recall_at_90p']:.4f}")
-    print(f"  (Threshold:         {results['threshold_at_90p']:.6f})")
-    print("=" * 60)
+    print("=" * 70)
+    print("PRIMARY METRICS:")
+    print(f"  PR-AUC (threshold-free):    {results['pr_auc']:.4f}")
+    print(f"\nF1-OPTIMAL OPERATING POINT:")
+    print(f"  Threshold:                  {results['f1_optimal_threshold']:.6f}")
+    print(f"  F1 Score:                   {results['f1_optimal_f1']:.4f}")
+    print(f"  Precision:                  {results['f1_optimal_precision']:.4f}")
+    print(f"  Recall:                     {results['f1_optimal_recall']:.4f}")
+    print(f"  Accuracy:                   {results['f1_optimal_accuracy']:.4f}")
+    print(f"\nCONFUSION MATRIX (at F1-optimal threshold):")
+    print(f"  True Negatives:  {results['f1_optimal_tn']:6d}")
+    print(f"  False Positives: {results['f1_optimal_fp']:6d}")
+    print(f"  False Negatives: {results['f1_optimal_fn']:6d}")
+    print(f"  True Positives:  {results['f1_optimal_tp']:6d}")
+    print(f"\nSECONDARY METRICS (for reference):")
+    print(f"  ROC-AUC:                    {results['roc_auc']:.4f}")
+    print(f"  Recall@90% Precision:       {results['recall_at_90p']:.4f}")
+    print("=" * 70)
 
 
 def compare_models(
@@ -236,23 +357,27 @@ def compare_models(
     """
     Print comparison table of multiple models.
 
+    Focuses on primary metrics: PR-AUC and F1-optimal operating point.
+
     Args:
         results_list: List of results dictionaries from compute_all_metrics()
         split_name: Name of the split
     """
-    print("\n" + "=" * 80)
+    print("\n" + "=" * 100)
     print(f"MODEL COMPARISON - {split_name} Set")
-    print("=" * 80)
-    print(f"{'Model':<25} {'ROC-AUC':<12} {'PR-AUC':<12} {'Recall@90%P':<12}")
-    print("-" * 80)
+    print("=" * 100)
+    print(f"{'Model':<25} {'PR-AUC':<12} {'F1':<12} {'Precision':<12} {'Recall':<12} {'Accuracy':<12}")
+    print("-" * 100)
 
     for results in results_list:
         print(f"{results['model_name']:<25} "
-              f"{results['roc_auc']:<12.4f} "
               f"{results['pr_auc']:<12.4f} "
-              f"{results['recall_at_90p']:<12.4f}")
+              f"{results['f1_optimal_f1']:<12.4f} "
+              f"{results['f1_optimal_precision']:<12.4f} "
+              f"{results['f1_optimal_recall']:<12.4f} "
+              f"{results['f1_optimal_accuracy']:<12.4f}")
 
-    print("=" * 80)
+    print("=" * 100)
 
 
 def print_cost_sensitive_analysis(

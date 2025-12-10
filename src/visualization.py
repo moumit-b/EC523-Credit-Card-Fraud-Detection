@@ -373,6 +373,183 @@ def plot_cost_vs_lambda(
     plt.close()
 
 
+def plot_f1_comparison(
+    results_list: List[Dict[str, Any]],
+    save_path: Optional[str] = None,
+    title: str = "F1 Score Comparison at Optimal Threshold",
+    show: bool = False
+) -> None:
+    """
+    Create a bar chart comparing F1 scores across models at their F1-optimal thresholds.
+
+    Args:
+        results_list: List of results dictionaries from compute_all_metrics()
+        save_path: Path to save the figure
+        title: Plot title
+        show: Whether to display the figure
+    """
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    models = [r['model_name'] for r in results_list]
+    f1_scores = [r['f1_optimal_f1'] for r in results_list]
+
+    # Sort by F1 score for better visualization
+    sorted_indices = np.argsort(f1_scores)
+    models = [models[i] for i in sorted_indices]
+    f1_scores = [f1_scores[i] for i in sorted_indices]
+
+    # Create color gradient (lower F1 = red, higher F1 = green)
+    colors = plt.cm.RdYlGn([f1 for f1 in f1_scores])
+
+    bars = ax.barh(models, f1_scores, color=colors, edgecolor='black', linewidth=1.5)
+
+    # Add value labels on bars
+    for i, (model, f1) in enumerate(zip(models, f1_scores)):
+        ax.text(f1 + 0.01, i, f'{f1:.4f}', va='center', fontsize=10, fontweight='bold')
+
+    ax.set_xlabel('F1 Score', fontsize=12, fontweight='bold')
+    ax.set_title(title, fontsize=14, fontweight='bold', pad=20)
+    ax.set_xlim(0, max(f1_scores) * 1.15)
+    ax.grid(axis='x', alpha=0.3)
+
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, bbox_inches='tight', dpi=300)
+        print(f"F1 comparison plot saved to: {save_path}")
+
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
+def plot_confusion_matrices(
+    results_list: List[Dict[str, Any]],
+    save_path: Optional[str] = None,
+    title: str = "Confusion Matrices at F1-Optimal Thresholds",
+    show: bool = False
+) -> None:
+    """
+    Create a grid of confusion matrices for all models at their F1-optimal thresholds.
+
+    Each confusion matrix is annotated with counts and is labeled with Normal/Fraud.
+
+    Args:
+        results_list: List of results dictionaries from compute_all_metrics()
+        save_path: Path to save the figure
+        title: Overall plot title
+        show: Whether to display the figure
+    """
+    n_models = len(results_list)
+    n_cols = min(3, n_models)
+    n_rows = (n_models + n_cols - 1) // n_cols
+
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4.5 * n_rows))
+
+    if n_models == 1:
+        axes = np.array([axes])
+    axes = axes.flatten() if n_models > 1 else axes
+
+    for idx, results in enumerate(results_list):
+        ax = axes[idx]
+
+        # Extract confusion matrix values
+        tn = results['f1_optimal_tn']
+        fp = results['f1_optimal_fp']
+        fn = results['f1_optimal_fn']
+        tp = results['f1_optimal_tp']
+
+        cm = np.array([[tn, fp], [fn, tp]])
+
+        # Plot heatmap
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False,
+                   ax=ax, square=True, linewidths=2, linecolor='black',
+                   annot_kws={'fontsize': 14, 'fontweight': 'bold'})
+
+        # Labels
+        ax.set_xlabel('Predicted', fontsize=11, fontweight='bold')
+        ax.set_ylabel('Actual', fontsize=11, fontweight='bold')
+        ax.set_xticklabels(['Normal', 'Fraud'], fontsize=10)
+        ax.set_yticklabels(['Normal', 'Fraud'], fontsize=10, rotation=90, va='center')
+
+        # Title with model name and F1 score
+        model_title = f"{results['model_name']}\nF1={results['f1_optimal_f1']:.4f}"
+        ax.set_title(model_title, fontsize=12, fontweight='bold', pad=10)
+
+    # Hide unused subplots
+    for idx in range(n_models, len(axes)):
+        axes[idx].axis('off')
+
+    fig.suptitle(title, fontsize=16, fontweight='bold', y=1.00)
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, bbox_inches='tight', dpi=300)
+        print(f"Confusion matrices plot saved to: {save_path}")
+
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
+def plot_single_confusion_matrix(
+    result: Dict[str, Any],
+    save_path: Optional[str] = None,
+    show: bool = False
+) -> None:
+    """
+    Plot a single confusion matrix for a model at its F1-optimal threshold.
+
+    Useful for creating individual slides or figures for each model.
+
+    Args:
+        result: Results dictionary from compute_all_metrics()
+        save_path: Path to save the figure
+        show: Whether to display the figure
+    """
+    fig, ax = plt.subplots(figsize=(7, 6))
+
+    # Extract confusion matrix values
+    tn = result['f1_optimal_tn']
+    fp = result['f1_optimal_fp']
+    fn = result['f1_optimal_fn']
+    tp = result['f1_optimal_tp']
+
+    cm = np.array([[tn, fp], [fn, tp]])
+
+    # Plot heatmap with larger annotations
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=True,
+               ax=ax, square=True, linewidths=3, linecolor='black',
+               annot_kws={'fontsize': 20, 'fontweight': 'bold'},
+               cbar_kws={'label': 'Count'})
+
+    # Labels
+    ax.set_xlabel('Predicted Class', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Actual Class', fontsize=14, fontweight='bold')
+    ax.set_xticklabels(['Normal', 'Fraud'], fontsize=12)
+    ax.set_yticklabels(['Normal', 'Fraud'], fontsize=12, rotation=90, va='center')
+
+    # Title with comprehensive metrics
+    title = f"{result['model_name']} - Confusion Matrix\n"
+    title += f"F1={result['f1_optimal_f1']:.4f} | "
+    title += f"Precision={result['f1_optimal_precision']:.4f} | "
+    title += f"Recall={result['f1_optimal_recall']:.4f}"
+    ax.set_title(title, fontsize=13, fontweight='bold', pad=15)
+
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, bbox_inches='tight', dpi=300)
+        print(f"Confusion matrix saved to: {save_path}")
+
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
 if __name__ == "__main__":
     # Test visualizations
     print("Testing visualization module...")

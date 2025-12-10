@@ -5,9 +5,17 @@ This script:
 1. Trains/loads baseline models (Logistic Regression, Isolation Forest)
 2. Trains/loads Deep Autoencoder
 3. Trains/loads Denoising Autoencoder
-4. Evaluates ALL models on validation AND test sets
-5. Generates comprehensive comparison tables and figures
-6. Saves all results for report generation
+4. Trains Hybrid model (AE→LR) using latent features
+5. Evaluates ALL models on validation AND test sets
+6. Generates comprehensive comparison tables and figures (with F1-optimal metrics)
+7. Saves all results for report generation
+
+Models evaluated (5 total):
+- Logistic Regression (supervised baseline)
+- Isolation Forest (unsupervised baseline)
+- Deep Autoencoder (unsupervised)
+- Denoising Autoencoder (unsupervised with noise regularization)
+- Hybrid AE→LR (semi-supervised: AE feature learning + LR classification)
 
 This is the main script for generating final report results.
 """
@@ -16,6 +24,8 @@ import sys
 import os
 import json
 import pandas as pd
+import numpy as np
+import torch
 
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -31,6 +41,7 @@ from src.data_utils import (
 from src.models import DeepAutoencoder, DenoisingAutoencoder
 from src.baselines import train_logistic_regression, train_isolation_forest
 from src.training import train_autoencoder, evaluate_reconstruction_error
+from sklearn.linear_model import LogisticRegression
 from src.evaluation import (
     compute_all_metrics,
     print_evaluation_summary,
@@ -44,8 +55,41 @@ from src.visualization import (
     plot_comparison_table,
     plot_cost_vs_lambda,
     plot_training_curves,
-    plot_reconstruction_error_distribution
+    plot_reconstruction_error_distribution,
+    plot_f1_comparison,
+    plot_confusion_matrices,
+    plot_single_confusion_matrix
 )
+
+
+def extract_latent_features(model, X, device, batch_size=256):
+    """
+    Extract latent representations from trained autoencoder.
+
+    Args:
+        model: Trained autoencoder model
+        X: Input features (n_samples, input_dim)
+        device: Device to run on
+        batch_size: Batch size for processing
+
+    Returns:
+        latent_features: numpy array of shape (n_samples, latent_dim)
+    """
+    model.eval()
+    model = model.to(device)
+
+    latent_features = []
+
+    with torch.no_grad():
+        for i in range(0, len(X), batch_size):
+            batch = X[i:i+batch_size]
+            batch_tensor = torch.FloatTensor(batch).to(device)
+
+            # Forward through encoder only
+            latent = model.encoder(batch_tensor)
+            latent_features.append(latent.cpu().numpy())
+
+    return np.vstack(latent_features)
 
 
 def main():
@@ -177,6 +221,45 @@ def main():
     print(f"Training curves saved to: {dae_train_curve_path}")
 
     # ==================================================================
+    # STEP 3.5: Train Hybrid Model (AE → LR)
+    # ==================================================================
+    print("\n" + "=" * 80)
+    print("STEP 3.5: TRAINING HYBRID MODEL (AE → LR)")
+    print("=" * 80)
+
+    print(f"\nExtracting {LATENT_DIM}D latent features from Deep Autoencoder...")
+
+    # Extract latent features for all sets
+    X_train_latent = extract_latent_features(
+        ae_training['model'], X_train, DEVICE, batch_size=BATCH_SIZE
+    )
+    X_val_latent = extract_latent_features(
+        ae_training['model'], X_val, DEVICE, batch_size=BATCH_SIZE
+    )
+    X_test_latent = extract_latent_features(
+        ae_training['model'], X_test, DEVICE, batch_size=BATCH_SIZE
+    )
+
+    print(f"Train latent features: {X_train_latent.shape}")
+    print(f"Val latent features: {X_val_latent.shape}")
+    print(f"Test latent features: {X_test_latent.shape}")
+
+    print(f"\nTraining Logistic Regression on {LATENT_DIM}D latent features...")
+    print("Using class_weight='balanced' to handle class imbalance")
+
+    lr_hybrid = LogisticRegression(
+        class_weight='balanced',
+        max_iter=1000,
+        random_state=RANDOM_SEED,
+        solver='lbfgs'
+    )
+
+    lr_hybrid.fit(X_train_latent, y_train)
+
+    print(f"Hybrid model training complete")
+    print(f"LR feature weights shape: {lr_hybrid.coef_.shape}")
+
+    # ==================================================================
     # STEP 4: Evaluate ALL models on VALIDATION set
     # ==================================================================
     print("\n" + "=" * 80)
@@ -215,6 +298,13 @@ def main():
         y_val, dae_val_errors, "Denoising Autoencoder"
     )
     val_results.append(dae_val_metrics)
+
+    # Hybrid model
+    hybrid_val_scores = lr_hybrid.predict_proba(X_val_latent)[:, 1]
+    hybrid_val_metrics = compute_all_metrics(
+        y_val, hybrid_val_scores, "Hybrid (AE→LR)"
+    )
+    val_results.append(hybrid_val_metrics)
 
     # Print comparison
     compare_models(val_results, split_name="Validation")
@@ -282,6 +372,14 @@ def main():
     test_results.append(dae_test_metrics)
     print_evaluation_summary(dae_test_metrics, "Test")
 
+    # Hybrid model
+    hybrid_test_scores = lr_hybrid.predict_proba(X_test_latent)[:, 1]
+    hybrid_test_metrics = compute_all_metrics(
+        y_test, hybrid_test_scores, "Hybrid (AE→LR)"
+    )
+    test_results.append(hybrid_test_metrics)
+    print_evaluation_summary(hybrid_test_metrics, "Test")
+
     # Print final comparison
     compare_models(test_results, split_name="Test")
 
@@ -309,6 +407,24 @@ def main():
     print("STEP 7: GENERATING VISUALIZATIONS")
     print("=" * 80)
 
+    # PRIMARY VISUALIZATIONS: F1-based evaluation
+    # F1 comparison across models
+    f1_comp_path = os.path.join(FIGURES_DIR, 'final_f1_comparison.png')
+    plot_f1_comparison(test_results, save_path=f1_comp_path,
+                      title="Test Set: F1 Score Comparison at Optimal Thresholds")
+
+    # Confusion matrices grid
+    conf_mat_path = os.path.join(FIGURES_DIR, 'final_confusion_matrices.png')
+    plot_confusion_matrices(test_results, save_path=conf_mat_path,
+                           title="Test Set: Confusion Matrices at F1-Optimal Thresholds")
+
+    # Individual confusion matrices for each model (for slides)
+    for result in test_results:
+        model_name_clean = result['model_name'].replace(' ', '_').lower()
+        single_cm_path = os.path.join(FIGURES_DIR, f'confusion_matrix_{model_name_clean}.png')
+        plot_single_confusion_matrix(result, save_path=single_cm_path)
+
+    # SECONDARY VISUALIZATIONS: PR/ROC curves
     # PR curves
     pr_path = os.path.join(FIGURES_DIR, 'final_pr_curves_comparison.png')
     plot_pr_curves(test_results, save_path=pr_path, title="Test Set: Precision-Recall Curves")
@@ -333,12 +449,25 @@ def main():
     print("=" * 80)
 
     # Create results table (convert numpy types to Python native types for JSON serialization)
+    # Focus on primary metrics: PR-AUC and F1-optimal operating point
     results_table = []
     for result in test_results:
         results_table.append({
             'Model': result['model_name'],
-            'ROC-AUC': float(result['roc_auc']),
+            # Primary metrics
             'PR-AUC': float(result['pr_auc']),
+            'F1': float(result['f1_optimal_f1']),
+            'Precision': float(result['f1_optimal_precision']),
+            'Recall': float(result['f1_optimal_recall']),
+            'Accuracy': float(result['f1_optimal_accuracy']),
+            'F1_Threshold': float(result['f1_optimal_threshold']),
+            # Confusion matrix counts
+            'TN': int(result['f1_optimal_tn']),
+            'FP': int(result['f1_optimal_fp']),
+            'FN': int(result['f1_optimal_fn']),
+            'TP': int(result['f1_optimal_tp']),
+            # Secondary metrics (for reference)
+            'ROC-AUC': float(result['roc_auc']),
             'Recall@90%P': float(result['recall_at_90p']),
             'Threshold@90%P': float(result['threshold_at_90p'])
         })
@@ -383,12 +512,18 @@ def main():
     print("EXPERIMENT COMPLETE!")
     print("=" * 80)
     print("\nFinal Test Results:")
-    print(results_df.to_string(index=False))
+    print(results_df[['Model', 'PR-AUC', 'F1', 'Precision', 'Recall', 'Accuracy']].to_string(index=False))
     print("\nGenerated Artifacts:")
+    print("\nPRIMARY VISUALIZATIONS (F1-based):")
+    print(f"  - {f1_comp_path}")
+    print(f"  - {conf_mat_path}")
+    print(f"  - Individual confusion matrices for each model in {FIGURES_DIR}/")
+    print("\nSECONDARY VISUALIZATIONS:")
     print(f"  - {pr_path}")
     print(f"  - {roc_path}")
     print(f"  - {comp_path}")
     print(f"  - {cost_path}")
+    print("\nRESULTS DATA:")
     print(f"  - {csv_path}")
     print(f"  - {json_path}")
     print(f"  - {meta_path}")
