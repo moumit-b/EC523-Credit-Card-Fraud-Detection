@@ -200,7 +200,7 @@ python scripts/ablation_noise.py
 |--------------|---------------------------|---------------|
 | Moumit Bhattacharjee | Slides: Experience gained, Pipeline, Task, Metrics, Evaluation, Architecture, Results<br>Report: Task, Approach, Dataset, Results | ~4500 |
 | Rohan Hegde | Slides: Experience gained, Pipeline, Task, Metrics, Evaluation, Architecture, Results<br>Report: Task, Approach, Dataset, Results | ~2500 |
-| Emmanuel Herold | Slides: Motivation, Related Work, Future Work<br>Report: Related Work | ~1300 |
+| Emmanuel Herold | Slides: Motivation, Related Work, Future Work<br>Report: Related Work | 131 |
 
 ## References
 
